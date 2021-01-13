@@ -17,6 +17,10 @@ from uds import TpFactory
 from os import path
 import threading
 
+NEGATIVE_RESPONSE = 0x7F
+NRC_RESPONSE_PENDING = 0x78
+
+
 ##
 # @brief a description is needed
 class Uds(object):
@@ -119,7 +123,7 @@ class Uds(object):
 
     ##
     # @brief
-    def send(self, msg, responseRequired=True, functionalReq=False):
+    def send(self, msg, responseRequired=True, functionalReq=False, pendingCallback=None):
         # sets a current transmission in progress - tester present (if running) will not send if this flag is set to true
         self.__transmissionActive_flag = True
         #print(("__transmissionActive_flag set:",self.__transmissionActive_flag))
@@ -140,7 +144,10 @@ class Uds(object):
         if responseRequired:
             while True:
                 response = self.tp.recv(self.__P2_CAN_Client)
-                if not ((response[0] == 0x7F) and (response[2] == 0x78)):
+                if ((response[0] == NEGATIVE_RESPONSE) and (response[2] == NRC_RESPONSE_PENDING)):
+                    if pendingCallback is not None:
+                        pendingCallback(msg)
+                else:
                     break
 
         # If the diagnostic session control service is supported, record the sending time for possible use by the tester present functionality (again, if present) ...		
